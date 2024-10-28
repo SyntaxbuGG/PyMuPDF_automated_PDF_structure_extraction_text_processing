@@ -3,7 +3,7 @@ import json
 import re
 from pprint import pprint
 
-pdf_file = fitz.open("Руководство_Бухгалтерия_для_Узбекистана_ред_3_0.pdf")
+pdf_file = fitz.open("filefortest.pdf")
 
 toc = pdf_file.get_toc()
 
@@ -12,15 +12,14 @@ toc = pdf_file.get_toc()
 def extract_structure(file):
     structure = {}
     chapter = 0
-    section_key = 1
-    subsection_key = 1
+  
     for line in file[1:] :
         level,title,page = line 
-       
+             
         if level == 1:
             if 'Глава' in title:
                 chapter += 1
-                section_key = 1
+             
                 structure[str(chapter)] = {}    
                 current_chapter = str(chapter) 
             else :
@@ -30,29 +29,27 @@ def extract_structure(file):
                 }
              
 
-        elif level == 2:
-            section_number = f'{chapter}.{section_key}'
-            
+        elif level == 2 and re.search(r'^\d+\.\d+',title):
+            section_number = title.split()[0]
+            withoutnumberstitle = " ".join(title.split()[1:])
             structure[current_chapter]['sections'][section_number] = {
-                'title' : title,
+                'title' : withoutnumberstitle,
                 'subsections': {}
             }
-            section_key += 1
-            subsection_key = 1
-
-
-        elif level == 3:
-            subsections_number = f'{section_number}.{subsection_key}'
+        
+        elif level == 3 and re.search(r'^\d+\.\d\.\d+',title):
+            subsections_number = title.split()[0]
+            withoutnumberstitle = " ".join(title.split()[1:])
             structure[current_chapter]['sections'][section_number]['subsections'][subsections_number] = {
-                'title' : title,
+                'title' : withoutnumberstitle,
             }
-            subsection_key += 1
+          
 
     return structure
 
-#print(toc)
+
 extracted_structure = extract_structure(toc)
-print(json.dumps(extracted_structure, indent=4, ensure_ascii=False))
+
             
 with open('structuretestfinal.json','w',encoding='utf-8') as json_file:
     json.dump(extracted_structure,json_file, ensure_ascii=False, indent=4)
