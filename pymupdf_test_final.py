@@ -7,9 +7,12 @@ pdf_file = fitz.open("filefortest.pdf")
 
 toc = pdf_file.get_toc()
 
+section_pattern = re.compile(r'^\d+\.\d+')
+subsection_pattern = re.compile(r'^\d+\.\d+\.\d+')
 
 
-def extract_structure(file):
+
+def extract_structure(file: list[list]) ->dict[dict]:
     structure = {}
     chapter = 0
   
@@ -29,7 +32,7 @@ def extract_structure(file):
                 }
              
 
-        elif level == 2 and re.search(r'^\d+\.\d+',title):
+        elif level == 2 and section_pattern.match(title):
             section_number = title.split()[0]
             withoutnumberstitle = " ".join(title.split()[1:])
             structure[current_chapter]['sections'][section_number] = {
@@ -37,7 +40,7 @@ def extract_structure(file):
                 'subsections': {}
             }
         
-        elif level == 3 and re.search(r'^\d+\.\d\.\d+',title):
+        elif level == 3 and subsection_pattern.match(title):
             subsections_number = title.split()[0]
             withoutnumberstitle = " ".join(title.split()[1:])
             structure[current_chapter]['sections'][section_number]['subsections'][subsections_number] = {
@@ -49,6 +52,7 @@ def extract_structure(file):
 
 
 extracted_structure = extract_structure(toc)
+print(extracted_structure)
 
             
 with open('structuretestfinal.json','w',encoding='utf-8') as json_file:
