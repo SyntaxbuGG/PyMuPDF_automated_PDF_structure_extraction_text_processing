@@ -3,16 +3,12 @@ import json
 import re
 
 
-pdf_file = fitz.open("filefortest.pdf")
-
-toc = pdf_file.get_toc()
-
 # Определение паттерн регуляных выражений
 chapter_pattern = re.compile(r"^[А-Яа-я]+(\s+[А-Яа-я]+(,\s*)?){0,20}$")
 section_pattern = re.compile(r'^\d+\.\d(\.)?+\s')
 subsection_pattern = re.compile(r'^\d+\.\d+\.\d+\s')
 text_pattern_stop = re.compile(
-    r'\b\d+\.\d+(\.\d+)?\.?\s+([А-Я][а-я]+|[А-Я]+)')
+    r'\b\d+\.\d+(\.\d+)?\.?\s?([А-Я][а-я]+|[А-Я]+)|\bГЛАВА\s?\d+')
 
 
 # Чтобы при чтение json файла было удобно !
@@ -28,10 +24,9 @@ def extract_text_from_pages(title_text: str, start_page: int) -> str:
     text_without_num = ''
 
     # Это чтобы несколько пробелов или какихто невидимох символов заменить на регэксп пробел
-    pattern_title = title_text.replace(" ", r"\s*")
-
+    pattern_title = re.escape(title_text).replace('\ ', '\s*')
     # Находит по заголовок игнорируя заглавные и строчные буквы
-    pattern = re.compile(rf'{pattern_title}(.*)', re.DOTALL | re.IGNORECASE)
+    pattern = re.compile(rf'{pattern_title}\s*(.*)', re.DOTALL | re.IGNORECASE)
 
     try:
         total_pages = pdf_file.page_count
@@ -39,9 +34,7 @@ def extract_text_from_pages(title_text: str, start_page: int) -> str:
             page = pdf_file.load_page(start_page - 1)
             page_text = page.get_text("text")
             match = pattern.search(page_text)
-
             text_without_num = match.group(1).lstrip() if match else page_text
-
             match_text = text_pattern_stop.search(text_without_num)
 
             if match_text:
@@ -122,11 +115,20 @@ def extract_structure(file: list[list]) -> dict[str, dict]:
     return structure
 
 
-extracted_structure = extract_structure(toc)
+# Основной блок программы
+pdf_file_path = "filefortest.pdf"
+try:
+    with fitz.open(pdf_file_path) as pdf_file:
+        toc = pdf_file.get_toc()
+        extracted_structure = extract_structure(toc)
+    
+        with open('structuretestfinal.json', 'w', encoding='utf-8') as json_file:
+            json.dump(extracted_structure, json_file,
+                      ensure_ascii=False, indent=4)
 
+        print('Успешно создан json файл')
 
-with open('structuretestfinal.json', 'w', encoding='utf-8') as json_file:
-    json.dump(extracted_structure, json_file, ensure_ascii=False, indent=4)
-
-
-print('Succesfull created json file')
+except fitz.FitzError as e:
+    print(f"Ошибка при работе с PDF файлом: {e}")
+except Exception as e:
+    print(f"Общая ошибка: {e}")
